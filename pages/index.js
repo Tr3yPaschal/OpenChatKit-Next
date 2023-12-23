@@ -15,6 +15,7 @@ export default function Home() {
     const newMessage = { message, response: '', timestamp };
     updatingConversationIndex.current = conversations.length;
     setConversations([...conversations, newMessage]);
+    setMessage(''); // Clear the input field as soon as the user hits send
 
     setIsLoading(true);
     setError(null);
@@ -52,8 +53,6 @@ export default function Home() {
       console.error('Error sending message:', err);
       setError(err.message || 'Failed to fetch');
       setIsLoading(false);
-    } finally {
-      setMessage(''); // Clear the input field
     }
   };
 
@@ -64,22 +63,29 @@ export default function Home() {
   }, [conversations]);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div id="header" className="flex flex-col h-screen">
       <header className="bg-blue-800 text-white p-4">
         <nav className="container mx-auto flex justify-between items-center">
           <span className="text-xl font-bold">NS-OpenChatKit</span>
         </nav>
       </header>
 
-      <main ref={mainContentRef} className="flex flex-col items-center justify-start flex-grow p-6 bg-gray-900 overflow-y-auto">
+      <main id="convo" ref={mainContentRef} className="flex flex-col items-center justify-start flex-grow p-6 bg-gray-900 overflow-y-auto">
         {conversations.map((conv, index) => (
           <div key={index} className="mb-4 w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg relative">
-            <p className="text-sm text-gray-500">{conv.timestamp}</p>
-            <p className="mb-2 p-4 rounded bg-gray-50 border border-gray-100 text-gray-600">{conv.message}</p>
-            <p className="p-4 rounded bg-gray-200 border border-gray-100 text-gray-600">{conv.response}</p>
+            <div className="flex justify-between">
+              <p id="msg-ts" className="text-sm text-gray-500">{conv.timestamp}</p>
+              <p id="msg" className="p-4 rounded bg-gray-50 border border-gray-100 text-gray-600">{conv.message}</p>
+            </div>
+            {conv.response && (
+              <div className="flex justify-between">
+                <p id="res" className="p-4 rounded bg-gray-200 border border-gray-100 text-gray-600">{conv.response}</p>
+                <p id="res-ts" className="text-sm text-gray-500">{conv.timestamp}</p>
+              </div>
+            )}
             {isLoading && index === conversations.length - 1 && (
-              <div className="flex justify-end p-2">
-                <div className="loader" style={{ width: '20px', height: '20px' }}></div>
+              <div id="convo-footer" className="p-2" style={{ height: '40px' }}>
+                <div className="loader" style={{ width: '20px', height: '20px', float: 'right' }}></div>
               </div>
             )}
           </div>
