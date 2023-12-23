@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 export default function Home() {
   const [message, setMessage] = useState('');
-  const [response, setResponse] = useState('');
+  const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const mainContentRef = useRef(null);
+  const updatingConversationIndex = useRef(null);
 
   const sendMessage = async () => {
-    if (isLoading) return;
+    if (isLoading || !message.trim()) return;
+
+    const timestamp = new Date().toLocaleTimeString();
+    const newMessage = { message, response: '', timestamp };
+    updatingConversationIndex.current = conversations.length;
+    setConversations([...conversations, newMessage]);
 
     setIsLoading(true);
     setError(null);
-    setResponse('');
 
     try {
       const responseStream = await fetch('http://localhost:3000/', {
@@ -33,15 +39,29 @@ export default function Home() {
           return;
         }
 
-        setResponse(prev => prev + decoder.decode(value, { stream: true }));
+        setConversations(prevConversations => {
+          const updatedConversations = [...prevConversations];
+          updatedConversations[updatingConversationIndex.current].response += decoder.decode(value, { stream: true });
+          return updatedConversations;
+        });
+
         return reader.read().then(processText);
       });
     } catch (err) {
       console.error('Error sending message:', err);
       setError(err.message || 'Failed to fetch');
       setIsLoading(false);
+    } finally {
+      setMessage(''); // Clear the input field
     }
   };
+
+  // Scroll to bottom of main content when conversations update
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTop = mainContentRef.current.scrollHeight;
+    }
+  }, [conversations]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -49,19 +69,31 @@ export default function Home() {
       <header className="bg-blue-800 text-white p-4">
         <nav className="container mx-auto flex justify-between items-center">
           <span className="text-xl font-bold">NS-OpenChatKit</span>
-          {/* Additional Nav items can be added here */}
         </nav>
       </header>
 
       {/* Main Content */}
-      <main className="flex flex-col items-center justify-center flex-grow p-6 bg-gray-900" style={{ paddingTop: '25px', paddingBottom: '25px', height: 'calc(100% - 50px)' }}>
-        <div className="mb-4 w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg" style={{ height: '100%' }}>
-          {error && <p className="mb-4 text-red-500">Error: {error}</p>}
-          <p className="mb-4 p-4 rounded bg-gray-50 border-gray-100 text-gray-600" style={{ overflowY: 'auto' }}>{response}</p>
-        </div>
+      <main ref={mainContentRef} className="flex flex-col items-center justify-start flex-grow p-6 bg-gray-900 overflow-y-auto">
+        {conversations.map((conv, index) => (
+          <div key={index} className="mb-4 w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg relative">
+            <p className="text-sm text-gray-500">{conv.timestamp}</p>
+            <p className="mb-2 p-4 rounded bg-gray-50 border border-gray-100 text-gray-600">{conv.message}</p>
+            {conv.response && (
+              <div className="flex justify-between">
+                <p className="text-sm text-gray-500">{new Date().toLocaleTimeString()}</p>
+                <p className="p-4 rounded bg-gray-200 border border-gray-100 text-gray-600">{conv.response}</p>
+              </div>
+            )}
+
+            {/* Loading Indicator */}
+            {isLoading && index === conversations.length - 1 && (
+              <div className="flex justify-end p-2">
+                <div className="loader" style={{ width: '20px', height: '20px' }}></div>
+              </div>
+            )}
+          </div>
+        ))}
       </main>
-
-
 
       {/* Sticky Footer */}
       <footer className="bg-gray-800 text-white text-center p-4 sticky bottom-0 flex flex-col items-center">
@@ -71,23 +103,21 @@ export default function Home() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             className="w-full pl-4 pr-20 py-3 rounded border border-gray-300 text-gray-700 focus:border-blue-500 focus:outline-none"
-            style={{ maxWidth: '800px' }}
+            placeholder="Type your message here..."
           />
           <button
             onClick={sendMessage}
             disabled={isLoading}
-            className={`absolute right-1 top-1/2 transform -translate-y-1/2 rounded bg-blue-500 py-2 px-4 text-white focus:outline-none focus:ring focus:ring-blue-300 ${isLoading ? 'bg-gray-500' : 'hover:bg-blue-600'
-              }`}
-            style={{ top: '50%', transform: 'translateY(-50%)' }}
+            className={`absolute right-1 top-1/2 transform -translate-y-1/2 rounded bg-blue-500 py-2 px-4 text-white focus:outline-none focus:ring focus:ring-blue-300 ${isLoading ? 'bg-gray-500' : 'hover:bg-blue-600'}`}
           >
             {isLoading ? 'Sending...' : 'Send'}
           </button>
         </div>
         <p className="mt-4">
-          &copy; Copyright Nerdskool 2024 - Powered by: GPT neo
+          &copy; Copyright Nerdskool 2024 -
+
         </p>
       </footer>
     </div>
   );
-
 }
