@@ -33,18 +33,19 @@ export default function Home() {
       const reader = responseStream.body.getReader();
       const decoder = new TextDecoder();
 
+      let completeResponse = '';
+
       reader.read().then(function processText({ done, value }) {
         if (done) {
+          setConversations(prevConversations => {
+            const updatedConversations = [...prevConversations];
+            updatedConversations[updatingConversationIndex.current].response = completeResponse;
+            return updatedConversations;
+          });
           setIsLoading(false);
           return;
         }
-
-        setConversations(prevConversations => {
-          const updatedConversations = [...prevConversations];
-          updatedConversations[updatingConversationIndex.current].response += decoder.decode(value, { stream: true });
-          return updatedConversations;
-        });
-
+        completeResponse += decoder.decode(value, { stream: true });
         return reader.read().then(processText);
       });
     } catch (err) {
@@ -56,7 +57,6 @@ export default function Home() {
     }
   };
 
-  // Scroll to bottom of main content when conversations update
   useEffect(() => {
     if (mainContentRef.current) {
       mainContentRef.current.scrollTop = mainContentRef.current.scrollHeight;
@@ -65,27 +65,18 @@ export default function Home() {
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Header with Nav-Bar */}
       <header className="bg-blue-800 text-white p-4">
         <nav className="container mx-auto flex justify-between items-center">
           <span className="text-xl font-bold">NS-OpenChatKit</span>
         </nav>
       </header>
 
-      {/* Main Content */}
       <main ref={mainContentRef} className="flex flex-col items-center justify-start flex-grow p-6 bg-gray-900 overflow-y-auto">
         {conversations.map((conv, index) => (
           <div key={index} className="mb-4 w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg relative">
             <p className="text-sm text-gray-500">{conv.timestamp}</p>
             <p className="mb-2 p-4 rounded bg-gray-50 border border-gray-100 text-gray-600">{conv.message}</p>
-            {conv.response && (
-              <div className="flex justify-between">
-                <p className="text-sm text-gray-500">{new Date().toLocaleTimeString()}</p>
-                <p className="p-4 rounded bg-gray-200 border border-gray-100 text-gray-600">{conv.response}</p>
-              </div>
-            )}
-
-            {/* Loading Indicator */}
+            <p className="p-4 rounded bg-gray-200 border border-gray-100 text-gray-600">{conv.response}</p>
             {isLoading && index === conversations.length - 1 && (
               <div className="flex justify-end p-2">
                 <div className="loader" style={{ width: '20px', height: '20px' }}></div>
@@ -95,7 +86,6 @@ export default function Home() {
         ))}
       </main>
 
-      {/* Sticky Footer */}
       <footer className="bg-gray-800 text-white text-center p-4 sticky bottom-0 flex flex-col items-center">
         <div className="relative w-full max-w-2xl">
           <input
@@ -114,8 +104,7 @@ export default function Home() {
           </button>
         </div>
         <p className="mt-4">
-          &copy; Copyright Nerdskool 2024 -
-
+          &copy; Copyright Nerdskool 2024
         </p>
       </footer>
     </div>
